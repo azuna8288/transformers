@@ -265,6 +265,13 @@ class MixtralAttention(nn.Module):
             base=self.rope_theta,
         )
 
+        if self.config.use_key_layernorm:
+            self.key_layernorm = nn.LayerNorm(
+                self.head_dim,
+                eps=self.config.layer_norm_eps,
+            )
+
+
     def _shape(self, tensor: torch.Tensor, seq_len: int, bsz: int):
         return tensor.view(bsz, seq_len, self.num_heads, self.head_dim).transpose(1, 2).contiguous()
 
@@ -307,6 +314,12 @@ class MixtralAttention(nn.Module):
         if past_key_value is not None:
             cache_kwargs = {"sin": sin, "cos": cos}  # Specific to RoPE models
             key_states, value_states = past_key_value.update(key_states, value_states, self.layer_idx, cache_kwargs)
+
+        if self.config.use_key_layernorm:
+            key_states = self.key_layernorm(key_states)
+            # in fsdp training mode, the norm will be autocasted to float32
+            if key_states.dtype != query_states.dtype:
+                key_states = key_states.to(query_states.dtype)
 
         # repeat k/v heads if n_kv_heads < n_heads
         key_states = repeat_kv(key_states, self.num_key_value_groups)
@@ -441,6 +454,12 @@ class MixtralFlashAttention2(MixtralAttention):
 
             cache_kwargs = {"sin": sin, "cos": cos}  # Specific to RoPE models
             key_states, value_states = past_key_value.update(key_states, value_states, self.layer_idx, cache_kwargs)
+
+        if self.config.use_key_layernorm:
+            key_states = self.key_layernorm(key_states)
+            # in fsdp training mode, the norm will be autocasted to float32
+            if key_states.dtype != query_states.dtype:
+                key_states = key_states.to(query_states.dtype)
 
         # repeat k/v heads if n_kv_heads < n_heads
         key_states = repeat_kv(key_states, self.num_key_value_groups)
