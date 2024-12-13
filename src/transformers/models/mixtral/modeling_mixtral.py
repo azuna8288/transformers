@@ -53,6 +53,8 @@ from ...utils.import_utils import is_torch_fx_available
 from .configuration_mixtral import MixtralConfig
 
 
+MixtralRMSNorm = nn.LayerNorm
+
 if is_flash_attn_2_available():
     from flash_attn import flash_attn_func, flash_attn_varlen_func
     from flash_attn.bert_padding import index_first_axis, pad_input, unpad_input  # noqa
@@ -131,25 +133,6 @@ def _get_unpad_data(attention_mask):
         cu_seqlens,
         max_seqlen_in_batch,
     )
-
-
-# Copied from transformers.models.llama.modeling_llama.LlamaRMSNorm with Llama->Mixtral
-class MixtralRMSNorm(nn.Module):
-    def __init__(self, hidden_size, eps=1e-6):
-        """
-        MixtralRMSNorm is equivalent to T5LayerNorm
-        """
-        super().__init__()
-        self.weight = nn.Parameter(torch.ones(hidden_size))
-        self.variance_epsilon = eps
-
-    def forward(self, hidden_states):
-        input_dtype = hidden_states.dtype
-        hidden_states = hidden_states.to(torch.float32)
-        variance = hidden_states.pow(2).mean(-1, keepdim=True)
-        hidden_states = hidden_states * torch.rsqrt(variance + self.variance_epsilon)
-        return self.weight * hidden_states.to(input_dtype)
-
 
 # Copied from transformers.models.llama.modeling_llama.LlamaRotaryEmbedding with Llama->Mixtral
 class MixtralRotaryEmbedding(nn.Module):
