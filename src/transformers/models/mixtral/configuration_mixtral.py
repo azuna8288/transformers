@@ -134,6 +134,8 @@ class MixtralConfig(PretrainedConfig):
         num_local_experts=8,
         output_router_logits=False,
         router_aux_loss_coef=0.001,
+        use_context_groupnorm=True,
+        interleaved_kv_shared=True,  # for old flash attn kv layout, will be deprecated in the future
         **kwargs,
     ):
         self.vocab_size = vocab_size
@@ -155,6 +157,9 @@ class MixtralConfig(PretrainedConfig):
         self.use_cache = use_cache
         self.rope_theta = rope_theta
         self.attention_dropout = attention_dropout
+
+        self.use_key_layernorm = use_key_layernorm
+        self.use_context_groupnorm = use_context_groupnorm
 
         self.num_experts_per_tok = num_experts_per_tok
         self.num_local_experts = num_local_experts
